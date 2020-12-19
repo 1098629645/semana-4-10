@@ -19,15 +19,42 @@ module.exports = {
 
     register : async (req, res, next) => {
         try {
-            //const re = await Usuario.create();
-            
-            res.status(500).send('pendiente por hacer reto personal')
+            const EncriptedPassword = bcrypt.hashSync(req.body.password)
+            const re = await Usuario.create({rol: req.body.rol, nombre: req.body.nombre, password: EncriptedPassword, email: req.body.email, estado: req.body.estado});
+            res.status(200).json(re);
             
         } catch (error) {
             res.status(500).send({ message: 'Ocurrió un error' });
             next(error)
         }
     },
+
+    //rol nombre password email estado
+    
+    update : async (req, res, next) => {
+        try {
+
+            // Buscar usuario por email
+            const user = await Usuario.findOne( {where:{ email : req.body.email }} );
+            
+            // validando contraseña
+            const validPassword = bcrypt.compareSync(req.body.password, user.password)
+
+            // Busca contraseña encriptada
+            const EncriptedPassword = bcrypt.hashSync(req.body.newpassword)
+
+            if(validPassword) {
+                const re = await Usuario.update({nombre: req.body.nombre, estado: req.body.estado, password: EncriptedPassword}, {where: {email: req.body.email}});
+                res.status(200).json(re);
+            } else {
+                res.status(401).send({ auth: false, tokenReturn: null, reason: "Contraseña invalida"});
+            }        
+        } catch (error) {
+            res.status(500).json({ 'error' : 'Oops paso algo' })
+            next(error)
+        }
+    },
+    
 
     login : async (req, res, next) => {
 
