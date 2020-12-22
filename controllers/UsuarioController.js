@@ -1,6 +1,6 @@
 const { Usuario } = require('../models/');
 const bcrypt = require('bcryptjs')
-const servToken = require('../services/token')
+const srvToken = require('../services/token')
 
 
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
         
     },
 
-    register : async (req, res, next) => {
+    add : async (req, res, next) => {
         try {
             const EncriptedPassword = bcrypt.hashSync(req.body.password)
             const re = await Usuario.create({rol: req.body.rol, nombre: req.body.nombre, password: EncriptedPassword, email: req.body.email, estado: req.body.estado});
@@ -29,22 +29,22 @@ module.exports = {
         }
     },
 
-    //rol nombre password email estado
+    // rol (perfil) nombre password email estado.
     
     update : async (req, res, next) => {
         try {
 
             // Buscar usuario por email
-            const user = await Usuario.findOne( {where:{ email : req.body.email }} );
+            const user = await Usuario.findOne( {where:{ id : req.body.id }} );
             
             // validando contraseña
             const validPassword = bcrypt.compareSync(req.body.password, user.password)
 
             // Busca contraseña encriptada
-            const EncriptedPassword = bcrypt.hashSync(req.body.newpassword)
+            const EncriptedPassword = req.body.newpassword ? bcrypt.hashSync(req.body.newpassword) :bcrypt.hashSync(user.password)
 
             if(validPassword) {
-                const re = await Usuario.update({nombre: req.body.nombre, estado: req.body.estado, password: EncriptedPassword}, {where: {email: req.body.email}});
+                const re = await Usuario.update({nombre: req.body.nombre, email: req.body.email, password: EncriptedPassword}, {where: {id: req.body.id}});
                 res.status(200).json(re);
             } else {
                 res.status(401).send({ auth: false, tokenReturn: null, reason: "Contraseña invalida"});
@@ -67,8 +67,9 @@ module.exports = {
                 const contrasenhaValida = bcrypt.compareSync(req.body.password, user.password)
                 if (contrasenhaValida)
                 {
-                    const token = servToken.encode(user.id, user.rol)
-
+                    
+                    const token = await srvToken.encode(user.id, user.rol)
+                    
                     res.status(200).send({
                         auth : true,
                         tokenReturn : token,
@@ -80,7 +81,7 @@ module.exports = {
                 }
     
             } else {
-                res.status(404).json({ 'error' : 'Usuario invalido' })
+                res.status(404).send({ auth: false, tokenReturn: null, reason: "Usuario invalido"})
             }
     
         } catch (error) {
@@ -89,7 +90,29 @@ module.exports = {
         }
     
     
-    }
+    },
 
+    activate : async (req, res, next) => {
+        try {
+            const re = await Usuario.update({estado: 1}, {where: {id: req.body.id}})
+            res.status(200).json(re)
+            
+        } catch (error) {
+            res.status(500).json({ 'error' : 'Oops paso algo' })
+            next(error)
+        }
+
+    },
+
+    deactivate : async (req, res, next) => {
+        try {
+            const re = await Usuario.update({estado: 0}, {where: {id: req.body.id}})
+            res.status(200).json(re)
+            
+        } catch (error) {
+            res.status(500).json({ 'error' : 'Oops paso algo' })
+            next(error)
+        }
+    },
 }
     
